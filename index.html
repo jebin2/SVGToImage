@@ -155,6 +155,7 @@
 			background-color: #fff;
 			border: 2px dashed #ccc;
 			border-radius: 8px;
+			cursor: pointer;
 		}
 
 		.preview-area img {
@@ -300,6 +301,29 @@
 			visibility: visible;
 		}
 
+		.overlay {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.8);
+			display: none;
+			justify-content: center;
+			align-items: center;
+			z-index: 1000;
+		}
+
+		.overlay img {
+			max-width: 90%;
+			max-height: 90%;
+			object-fit: contain;
+		}
+
+		.overlay.show {
+			display: flex;
+		}
+
 		@media (max-width: 768px) {
 			.converter {
 				grid-template-columns: 1fr;
@@ -386,6 +410,11 @@
 
 	<div class="toast" id="toast">Copied to clipboard!</div>
 
+	<!-- Overlay for displaying the full-size image -->
+	<div class="overlay" id="overlay">
+		<img src="" alt="Full Size Image" id="fullSizeImage">
+	</div>
+
 	<script>
 		document.addEventListener('DOMContentLoaded', () => {
 			// Elements
@@ -401,6 +430,8 @@
 			const qualityInput = document.getElementById('qualityInput');
 			const qualityValue = document.getElementById('qualityValue');
 			const toast = document.getElementById('toast');
+			const overlay = document.getElementById('overlay');
+			const fullSizeImage = document.getElementById('fullSizeImage');
 
 			// Variables
 			let currentSvgContent = null;
@@ -655,6 +686,20 @@
 					toast.classList.remove('show');
 				}, 3000);
 			}
+
+			// Image Preview Click Handler
+			previewArea.addEventListener('click', () => {
+				if (convertedImage) {
+					fullSizeImage.src = convertedImage;
+					overlay.classList.add('show');
+				}
+			});
+
+			// Overlay Click Handler (to close the image)
+			overlay.addEventListener('click', () => {
+				overlay.classList.remove('show');
+				fullSizeImage.src = ""; // Clear the image source when closing
+			});
 		});
 	</script>
 </body>
