@@ -405,12 +405,18 @@
 			// Update range value displays
 			scaleInput.addEventListener('input', () => {
 				scaleValue.textContent = `${scaleInput.value}x`;
-				if (currentSvgContent) convertSVG();
+				clearTimeout(scaleTimeout);
+				scaleTimeout = setTimeout(() => {
+					if (currentSvgContent) convertSVG();
+				}, 300); // Convert after 300ms of inactivity
 			});
 
 			qualityInput.addEventListener('input', () => {
 				qualityValue.textContent = `${Math.round(qualityInput.value * 100)}%`;
-				if (currentSvgContent) convertSVG();
+				clearTimeout(qualityTimeout);
+				qualityTimeout = setTimeout(() => {
+					if (currentSvgContent) convertSVG();
+				}, 300);
 			});
 
 			// Format change handler
