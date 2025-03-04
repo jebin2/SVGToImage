@@ -5,6 +5,10 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>SVG to Image Converter</title>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+	<script type="text/javascript" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+	</script>
+
 	<style>
 		:root {
 			--primary: #ff6b6b;
@@ -685,6 +689,7 @@
 
 			// Paste handler
 			document.addEventListener('paste', (e) => {
+				if (e.target.id === "svgCodeEditor") return; // Ignore paste in the editor
 				e.preventDefault();
 
 				const clipboardData = e.clipboardData || window.clipboardData;
@@ -732,65 +737,76 @@
 				const scale = parseFloat(scaleInput.value);
 				const quality = parseFloat(qualityInput.value);
 
-				// Create a temporary SVG element to get dimensions
-				const parser = new DOMParser();
-				const svgDoc = parser.parseFromString(currentSvgContent, 'image/svg+xml');
-				const svgElement = svgDoc.documentElement;
+				// Create temporary container
+				const tempDiv = document.createElement('div');
+				tempDiv.style.position = 'absolute';
+				tempDiv.style.left = '-9999px';
+				tempDiv.style.overflow = 'hidden';
+				tempDiv.innerHTML = currentSvgContent;
 
-				// Get SVG dimensions
-				let width = svgElement.getAttribute('width');
-				let height = svgElement.getAttribute('height');
+				// Get SVG element
+				const svgElement = tempDiv.querySelector('svg');
+				if (!svgElement) {
+					showToast('Invalid SVG content');
+					return;
+				}
 
-				// If dimensions are not set or are percentages, try to get from viewBox
+				// Calculate dimensions
+				let width = parseFloat(svgElement.getAttribute('width'));
+				let height = parseFloat(svgElement.getAttribute('height'));
 				if (!width || !height || width.includes('%') || height.includes('%')) {
 					const viewBox = svgElement.getAttribute('viewBox');
 					if (viewBox) {
-						const viewBoxValues = viewBox.split(' ');
-						if (viewBoxValues.length === 4) {
+						const viewBoxValues = viewBox.split(' '); if (viewBoxValues.length === 4) {
 							width = viewBoxValues[2];
 							height = viewBoxValues[3];
 						}
 					}
 				}
-
-				// Convert to numbers and apply scale
 				width = parseFloat(width) * scale || 300 * scale;
 				height = parseFloat(height) * scale || 150 * scale;
 
-				// Create a canvas element
-				const canvas = document.createElement('canvas');
-				canvas.width = width;
-				canvas.height = height;
-				const ctx = canvas.getContext('2d');
+				// Set scaled dimensions
+				// svgElement.setAttribute('width', width);
+				// svgElement.setAttribute('height', height);
+				tempDiv.style.width = `${width}px`;
+				tempDiv.style.height = `${height}px`;
 
-				// Create a blob URL for the SVG
-				const blob = new Blob([currentSvgContent], { type: 'image/svg+xml' });
-				const url = URL.createObjectURL(blob);
+				document.body.appendChild(tempDiv);
+				// Wait for MathJax to render equations
+				if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+					MathJax.typesetPromise([tempDiv]).then(() => {
+						html2canvas(tempDiv, {
+							scale: 1,
+							width: width,
+							height: height,
+							useCORS: true,
+							allowTaint: true,
+							logging: false
+						}).then(canvas => {
+							const mimeType = format === 'jpeg' ? 'image/jpeg' :
+								format === 'webp' ? 'image/webp' : 'image/png';
+							const dataUrl = canvas.toDataURL(mimeType, quality);
 
-				// Create an image element and draw it on the canvas when loaded
-				const img = new Image();
-				img.onload = () => {
-					ctx.drawImage(img, 0, 0, width, height);
-					URL.revokeObjectURL(url);
+							updatePreview(dataUrl);
+							updateImageSize(width, height);
 
-					// Convert canvas to image with specified format
-					const mimeType = format === 'jpeg' ? 'image/jpeg' :
-						format === 'webp' ? 'image/webp' : 'image/png';
+							downloadBtn.classList.remove('disabled');
+							copyBtn.classList.remove('disabled');
+							editBtn.classList.remove('disabled');
+							resetBtnMain.classList.remove('disabled');
 
-					const dataUrl = canvas.toDataURL(mimeType, quality);
-					updatePreview(dataUrl);
-					updateImageSize(width, height);
+							convertedImage = dataUrl;
+							// document.body.removeChild(tempDiv);
+						}).catch(err => {
+							console.error('Rendering failed:', err);
+							showToast('Error converting SVG');
+							document.body.removeChild(tempDiv);
+						});
+					});
+				}
+				// Render with html2canvas
 
-					// Enable download and copy buttons
-					downloadBtn.classList.remove('disabled');
-					copyBtn.classList.remove('disabled');
-					editBtn.classList.remove('disabled');
-					resetBtnMain.classList.remove('disabled');
-
-					// Store converted image data
-					convertedImage = dataUrl;
-				};
-				img.src = url;
 			}
 
 			// Update preview
@@ -914,6 +930,7 @@
 			function updateEditModalPreview(svgContent) {
 				try {
 					editModalPreview.innerHTML = svgContent;
+					MathJax.typesetPromise([editModalPreview]);
 					svgDocument = new DOMParser().parseFromString(svgContent, 'image/svg+xml');
 
 				} catch (e) {
