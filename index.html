@@ -171,7 +171,7 @@
 
 		.actions {
 			display: contents;
-			grid-template-columns: 1fr 1fr;
+			/* added 3rd column */
 			gap: 16px;
 			/*       margin-top: 24px; */
 		}
@@ -324,12 +324,133 @@
 			display: flex;
 		}
 
+		/* Styles for Edit Modal */
+		.edit-modal {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.5);
+			display: none;
+			justify-content: center;
+			align-items: center;
+			z-index: 1001;
+		}
+
+		.edit-modal.show {
+			display: flex;
+		}
+
+		.edit-modal-content {
+			background-color: var(--light);
+			border: 4px solid var(--dark);
+			border-radius: 12px;
+			padding: 24px;
+			box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--dark);
+			width: 90%;
+			/* max-width: 1200px; */
+			height: 90%;
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 24px;
+		}
+
+		.edit-modal-code {
+			height: 100%;
+		}
+
+		.edit-modal-code textarea {
+			width: 100%;
+			height: 100%;
+			padding: 12px;
+			border: 3px solid var(--dark);
+			border-radius: 8px;
+			font-family: monospace;
+			font-size: 1rem;
+			resize: none;
+			background-color: #fff;
+			box-shadow: 2px 2px 0 var(--dark);
+		}
+
+		.edit-modal-preview {
+			height: 100%;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			overflow: hidden;
+			background-color: #fff;
+			border: 2px dashed #ccc;
+			border-radius: 8px;
+		}
+
+		.edit-modal-preview svg {
+			max-width: 100%;
+			max-height: 100%;
+			object-fit: contain;
+		}
+
+		.edit-modal-actions {
+			height: fit-content;
+			grid-column: span 2;
+			display: flex;
+			justify-content: flex-end;
+			gap: 16px;
+			margin-top: 16px;
+		}
+
+		.edit-modal-actions button {
+			padding: 12px 24px;
+			border: 3px solid var(--dark);
+			border-radius: 8px;
+			cursor: pointer;
+			box-shadow: 3px 3px 0 var(--dark);
+			transition: all 0.2s ease;
+			font-weight: bold;
+			text-transform: uppercase;
+		}
+
+		.edit-modal-actions button:hover {
+			transform: translate(-2px, -2px);
+			box-shadow: 5px 5px 0 var(--dark);
+		}
+
+		.edit-modal-actions button:active {
+			transform: translate(1px, 1px);
+			box-shadow: 2px 2px 0 var(--dark);
+		}
+
+		.edit-modal-actions .save {
+			background-color: var(--secondary);
+			color: var(--dark);
+		}
+
+		.edit-modal-actions .cancel {
+			background-color: var(--primary);
+			color: var(--light);
+		}
+
+		/* SVG tag highlighting */
+		.highlighted-svg-element {
+			outline: 4px solid var(--accent);
+			/* Style for highlighted SVG elements */
+		}
+
 		@media (max-width: 768px) {
 			.converter {
 				grid-template-columns: 1fr;
 			}
 
 			.options {
+				grid-column: span 1;
+			}
+
+			.edit-modal-content {
+				grid-template-columns: 1fr;
+				height: 90%;
+			}
+
+			.edit-modal-actions {
 				grid-column: span 1;
 			}
 		}
@@ -391,6 +512,15 @@
 			</div>
 
 			<div class="actions">
+				<button class="action-btn disabled" id="resetBtnMain">Reset</button>
+				<button class="action-btn disabled" id="editBtn">
+					<!-- Edit Button -->
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+						<path
+							d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+					</svg>
+					Edit
+				</button>
 				<button class="action-btn copy disabled" id="copyBtn">
 					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 						<path
@@ -415,6 +545,23 @@
 		<img src="" alt="Full Size Image" id="fullSizeImage">
 	</div>
 
+	<!-- Edit Modal -->
+	<div class="edit-modal" id="editModal">
+		<div class="edit-modal-content">
+			<div class="edit-modal-code">
+				<textarea id="svgCodeEditor"></textarea>
+			</div>
+			<div class="edit-modal-preview" id="editModalPreview">
+				<!-- SVG will be rendered here -->
+			</div>
+			<div class="edit-modal-actions">
+				<button class="reset" id="resetBtn">Reset</button>
+				<button class="save" id="saveEditBtn">Save</button>
+				<button class="cancel" id="cancelEditBtn">Cancel</button>
+			</div>
+		</div>
+	</div>
+
 	<script>
 		document.addEventListener('DOMContentLoaded', () => {
 			// Elements
@@ -433,9 +580,22 @@
 			const overlay = document.getElementById('overlay');
 			const fullSizeImage = document.getElementById('fullSizeImage');
 
+			// Edit Modal Elements
+			const editBtn = document.getElementById('editBtn');
+			const editModal = document.getElementById('editModal');
+			const svgCodeEditor = document.getElementById('svgCodeEditor');
+			const editModalPreview = document.getElementById('editModalPreview');
+			const saveEditBtn = document.getElementById('saveEditBtn');
+			const resetBtn = document.getElementById('resetBtn');
+			const resetBtnMain = document.getElementById('resetBtnMain');
+			const cancelEditBtn = document.getElementById('cancelEditBtn');
+
 			// Variables
 			let currentSvgContent = null;
 			let convertedImage = null;
+			let originalSvgContent = null; // Store the original SVG content
+			let svgDocument = null; // Store the parsed SVG document
+
 
 			// Update range value displays
 			let scaleTimeout;
@@ -559,6 +719,8 @@
 			// Process SVG string
 			function processSvgString(svgString) {
 				currentSvgContent = svgString;
+				originalSvgContent = svgString; // Store the original SVG
+				svgDocument = new DOMParser().parseFromString(svgString, 'image/svg+xml'); // Parse the SVG
 				convertSVG();
 			}
 
@@ -622,6 +784,8 @@
 					// Enable download and copy buttons
 					downloadBtn.classList.remove('disabled');
 					copyBtn.classList.remove('disabled');
+					editBtn.classList.remove('disabled');
+					resetBtnMain.classList.remove('disabled');
 
 					// Store converted image data
 					convertedImage = dataUrl;
@@ -700,6 +864,119 @@
 				overlay.classList.remove('show');
 				fullSizeImage.src = ""; // Clear the image source when closing
 			});
+
+
+			// --------------------------------------------------------
+			// Edit Modal Functionality
+			// --------------------------------------------------------
+
+			editBtn.addEventListener('click', () => {
+				if (currentSvgContent) {
+					svgCodeEditor.value = currentSvgContent; // Populate editor
+					updateEditModalPreview(currentSvgContent); // Initial render
+					editModal.classList.add('show');
+				}
+			});
+
+			cancelEditBtn.addEventListener('click', () => {
+				editModal.classList.remove('show');
+				svgCodeEditor.value = "";
+				editModalPreview.innerHTML = "";
+				resetSvgHighlighting();
+			});
+
+			saveEditBtn.addEventListener('click', () => {
+				resetSvgHighlighting();
+				currentSvgContent = svgCodeEditor.value; // Update current SVG
+				svgDocument = new DOMParser().parseFromString(currentSvgContent, 'image/svg+xml');
+				convertSVG(); // Re-convert the image
+				editModal.classList.remove('show');
+				svgCodeEditor.value = "";
+				editModalPreview.innerHTML = "";
+			});
+
+			resetBtn.addEventListener('click', () => {
+				svgCodeEditor.value = originalSvgContent;
+				updateEditModalPreview(originalSvgContent);
+			});
+			resetBtnMain.addEventListener('click', () => {
+				currentSvgContent = originalSvgContent;
+				convertSVG(); // Re-convert the image
+			});
+
+			svgCodeEditor.addEventListener('input', () => {
+				const newSvgContent = svgCodeEditor.value;
+				updateEditModalPreview(newSvgContent);
+				currentSvgContent = newSvgContent;
+
+			});
+
+			function updateEditModalPreview(svgContent) {
+				try {
+					editModalPreview.innerHTML = svgContent;
+					svgDocument = new DOMParser().parseFromString(svgContent, 'image/svg+xml');
+
+				} catch (e) {
+					editModalPreview.innerHTML = '<p>Error rendering SVG</p>';
+				}
+			}
+
+			// Enhanced highlighting logic
+			svgCodeEditor.addEventListener('click', (event) => {
+				if (!svgDocument) return;
+
+				const textarea = svgCodeEditor;
+				const selectionStart = textarea.selectionStart;
+
+				// Get the entire textarea content as an array of lines
+				const lines = textarea.value.split("\n");
+
+				// Find the line where the cursor is positioned
+				let cursorLineIndex = textarea.value.substring(0, selectionStart).split("\n").length - 1;
+				let tagLine = lines[cursorLineIndex].trim(); // The exact line containing the tag
+
+				if (!tagLine.startsWith("<") || !tagLine.endsWith(">")) {
+					resetSvgHighlighting();
+					return;
+				}
+
+				// Find the exact matching element in the SVG document
+				let matchedElement = findSvgElementByLine(tagLine);
+
+				resetSvgHighlighting();
+
+				if (matchedElement) {
+					matchedElement.classList.add('highlighted-svg-element');
+				}
+			});
+
+			function findSvgElementByLine(tagLine) {
+				if (!svgDocument) return null;
+
+				// Get all elements inside the SVG
+				let elements = Array.from(editModalPreview.querySelectorAll("*")); // Select all elements
+
+				for (let el of elements) {
+					let serializedEl = el.outerHTML.split("\n")[0].trim(); // Get only the first line of outerHTML
+
+					if (tagLine.replaceAll(" ", "").includes(serializedEl.replaceAll(" ", ""))) {
+						return el; // Found the exact matching element
+					}
+				}
+				return null;
+			}
+
+			// Function to remove previous highlights
+			function resetSvgHighlighting() {
+				document.querySelectorAll('.highlighted-svg-element').forEach(el => {
+					el.classList.remove('highlighted-svg-element');
+					if (el.classList.length == 0) {
+						el.removeAttribute("class")
+					}
+				});
+			}
+
+
 		});
 	</script>
 </body>
