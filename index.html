@@ -754,7 +754,7 @@
 				// Calculate dimensions
 				let width = parseFloat(svgElement.getAttribute('width'));
 				let height = parseFloat(svgElement.getAttribute('height'));
-				if (!width || !height || width.includes('%') || height.includes('%')) {
+				if (!width || !height || (width+"").includes('%') || (height+"").includes('%')) {
 					const viewBox = svgElement.getAttribute('viewBox');
 					if (viewBox) {
 						const viewBoxValues = viewBox.split(' '); if (viewBoxValues.length === 4) {
