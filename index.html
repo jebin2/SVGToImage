@@ -567,129 +567,165 @@
 	</div>
 
 	<script>
-		document.addEventListener('DOMContentLoaded', () => {
-			// Elements
-			const dropArea = document.getElementById('dropArea');
-			const fileInput = document.getElementById('fileInput');
-			const previewArea = document.getElementById('previewArea');
-			const imagePreviewHeader = document.getElementById('imagePreviewHeader');
-			const downloadBtn = document.getElementById('downloadBtn');
-			const copyBtn = document.getElementById('copyBtn');
-			const formatSelect = document.getElementById('formatSelect');
-			const scaleInput = document.getElementById('scaleInput');
-			const scaleValue = document.getElementById('scaleValue');
-			const qualityInput = document.getElementById('qualityInput');
-			const qualityValue = document.getElementById('qualityValue');
-			const toast = document.getElementById('toast');
-			const overlay = document.getElementById('overlay');
-			const fullSizeImage = document.getElementById('fullSizeImage');
+		// Optimized SVG Converter Script
 
-			// Edit Modal Elements
-			const editBtn = document.getElementById('editBtn');
-			const editModal = document.getElementById('editModal');
-			const svgCodeEditor = document.getElementById('svgCodeEditor');
-			const editModalPreview = document.getElementById('editModalPreview');
-			const saveEditBtn = document.getElementById('saveEditBtn');
-			const resetBtn = document.getElementById('resetBtn');
-			const resetBtnMain = document.getElementById('resetBtnMain');
-			const cancelEditBtn = document.getElementById('cancelEditBtn');
+		class SVGConverter {
+			constructor() {
+				// Cache DOM elements for performance
+				this.elements = {
+					dropArea: document.getElementById('dropArea'),
+					fileInput: document.getElementById('fileInput'),
+					previewArea: document.getElementById('previewArea'),
+					imagePreviewHeader: document.getElementById('imagePreviewHeader'),
+					downloadBtn: document.getElementById('downloadBtn'),
+					copyBtn: document.getElementById('copyBtn'),
+					formatSelect: document.getElementById('formatSelect'),
+					scaleInput: document.getElementById('scaleInput'),
+					scaleValue: document.getElementById('scaleValue'),
+					qualityInput: document.getElementById('qualityInput'),
+					qualityValue: document.getElementById('qualityValue'),
+					toast: document.getElementById('toast'),
+					overlay: document.getElementById('overlay'),
+					fullSizeImage: document.getElementById('fullSizeImage'),
 
-			// Variables
-			let currentSvgContent = null;
-			let convertedImage = null;
-			let originalSvgContent = null; // Store the original SVG content
-			let svgDocument = null; // Store the parsed SVG document
+					// Edit Modal Elements
+					editBtn: document.getElementById('editBtn'),
+					editModal: document.getElementById('editModal'),
+					svgCodeEditor: document.getElementById('svgCodeEditor'),
+					editModalPreview: document.getElementById('editModalPreview'),
+					saveEditBtn: document.getElementById('saveEditBtn'),
+					resetBtn: document.getElementById('resetBtn'),
+					resetBtnMain: document.getElementById('resetBtnMain'),
+					cancelEditBtn: document.getElementById('cancelEditBtn')
+				};
 
+				// State variables
+				this.state = {
+					currentSvgContent: null,
+					convertedImage: null,
+					originalSvgContent: null,
+					svgDocument: null
+				};
 
-			// Update range value displays
-			let scaleTimeout;
-			scaleInput.addEventListener('input', () => {
-				scaleValue.textContent = `${scaleInput.value}x`;
-				clearTimeout(scaleTimeout);
-				scaleTimeout = setTimeout(() => {
-					if (currentSvgContent) convertSVG();
-				}, 300); // Convert after 300ms of inactivity
-			});
+				// Debounce timeouts
+				this.timeouts = {
+					scale: null,
+					quality: null
+				};
 
-			let qualityTimeout
-			qualityInput.addEventListener('input', () => {
-				qualityValue.textContent = `${Math.round(qualityInput.value * 100)}%`;
-				clearTimeout(qualityTimeout);
-				qualityTimeout = setTimeout(() => {
-					if (currentSvgContent) convertSVG();
+				this.initEventListeners();
+			}
+
+			initEventListeners() {
+				// Performance optimization: Use event delegation and debounce
+				this.setupInputListeners();
+				this.setupDragAndDropHandlers();
+				this.setupClipboardHandlers();
+				this.setupModalHandlers();
+				this.setupUtilityHandlers();
+			}
+
+			setupInputListeners() {
+				// Debounced input handlers
+				this.elements.scaleInput.addEventListener('input', this.handleScaleInput.bind(this));
+				this.elements.qualityInput.addEventListener('input', this.handleQualityInput.bind(this));
+				this.elements.formatSelect.addEventListener('change', this.handleFormatChange.bind(this));
+			}
+
+			handleScaleInput() {
+				// Debounce scale input
+				this.elements.scaleValue.textContent = `${this.elements.scaleInput.value}x`;
+				clearTimeout(this.timeouts.scale);
+				this.timeouts.scale = setTimeout(() => {
+					if (this.state.currentSvgContent) this.convertSVG();
 				}, 300);
-			});
+			}
 
-			// Format change handler
-			formatSelect.addEventListener('change', () => {
-				if (currentSvgContent) convertSVG();
-			});
+			handleQualityInput() {
+				// Debounce quality input
+				this.elements.qualityValue.textContent = `${Math.round(this.elements.qualityInput.value * 100)}%`;
+				clearTimeout(this.timeouts.quality);
+				this.timeouts.quality = setTimeout(() => {
+					if (this.state.currentSvgContent) this.convertSVG();
+				}, 300);
+			}
 
-			// Drag and drop handlers
-			['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-				dropArea.addEventListener(eventName, preventDefaults, false);
-			});
+			handleFormatChange() {
+				if (this.state.currentSvgContent) this.convertSVG();
+			}
 
-			function preventDefaults(e) {
+			setupDragAndDropHandlers() {
+				// Prevent default drag and drop behaviors
+				['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+					this.elements.dropArea.addEventListener(eventName, this.preventDefaults);
+				});
+
+				// Add/remove active class for visual feedback
+				['dragenter', 'dragover'].forEach(eventName => {
+					this.elements.dropArea.addEventListener(eventName, () => {
+						this.elements.dropArea.classList.add('active');
+					});
+				});
+
+				['dragleave', 'drop'].forEach(eventName => {
+					this.elements.dropArea.addEventListener(eventName, () => {
+						this.elements.dropArea.classList.remove('active');
+					});
+				});
+
+				this.elements.dropArea.addEventListener('drop', this.handleDrop.bind(this));
+				this.elements.fileInput.addEventListener('change', this.handleFileInputChange.bind(this));
+			}
+
+			preventDefaults(e) {
 				e.preventDefault();
 				e.stopPropagation();
 			}
 
-			['dragenter', 'dragover'].forEach(eventName => {
-				dropArea.addEventListener(eventName, () => {
-					dropArea.classList.add('active');
-				});
-			});
-
-			['dragleave', 'drop'].forEach(eventName => {
-				dropArea.addEventListener(eventName, () => {
-					dropArea.classList.remove('active');
-				});
-			});
-
-			dropArea.addEventListener('drop', handleDrop);
-
-			function handleDrop(e) {
+			handleDrop(e) {
 				const dt = e.dataTransfer;
-				if (dt.items) {
-					// Use DataTransferItemList interface to access files
-					for (let i = 0; i < dt.items.length; i++) {
-						if (dt.items[i].kind === "file") {
-							const file = dt.items[i].getAsFile();
-							if (file.type === "image/svg+xml") {
-								processFile(file);
-								break;
-							}
-						} else if (dt.items[i].kind === "string" && dt.items[i].type === "text/plain") {
-							dt.items[i].getAsString((text) => {
+				const files = dt.files;
+				const items = dt.items;
+
+				// Prioritize SVG file or SVG string
+				if (items) {
+					for (let i = 0; i < items.length; i++) {
+						if (items[i].kind === "file" && items[i].type === "image/svg+xml") {
+							this.processFile(items[i].getAsFile());
+							return;
+						} else if (items[i].kind === "string" && items[i].type === "text/plain") {
+							items[i].getAsString((text) => {
 								if (text.trim().startsWith('<svg') || text.trim().startsWith('<?xml')) {
-									processSvgString(text);
+									this.processSvgString(text);
 								}
 							});
-							break;
+							return;
 						}
 					}
 				} else {
-					// Use DataTransfer interface to access files
-					for (let i = 0; i < dt.files.length; i++) {
-						if (dt.files[i].type === "image/svg+xml") {
-							processFile(dt.files[i]);
-							break;
+					for (let i = 0; i < files.length; i++) {
+						if (files[i].type === "image/svg+xml") {
+							this.processFile(files[i]);
+							return;
 						}
 					}
 				}
 			}
 
-			// File input handler
-			fileInput.addEventListener('change', () => {
-				if (fileInput.files.length > 0) {
-					processFile(fileInput.files[0]);
+			handleFileInputChange() {
+				const files = this.elements.fileInput.files;
+				if (files.length > 0) {
+					this.processFile(files[0]);
 				}
-			});
+			}
 
-			// Paste handler
-			document.addEventListener('paste', (e) => {
-				if (e.target.id === "svgCodeEditor") return; // Ignore paste in the editor
+			setupClipboardHandlers() {
+				document.addEventListener('paste', this.handlePaste.bind(this));
+			}
+
+			handlePaste(e) {
+				// Ignore paste in the editor
+				if (e.target.id === "svgCodeEditor") return;
 				e.preventDefault();
 
 				const clipboardData = e.clipboardData || window.clipboardData;
@@ -697,250 +733,270 @@
 
 				for (let i = 0; i < items.length; i++) {
 					if (items[i].type === "image/svg+xml") {
-						const blob = items[i].getAsFile();
-						processFile(blob);
+						this.processFile(items[i].getAsFile());
 						return;
 					} else if (items[i].type === "text/plain") {
 						items[i].getAsString((text) => {
 							if (text.trim().startsWith('<svg') || text.trim().startsWith('<?xml')) {
-								processSvgString(text);
+								this.processSvgString(text);
 							}
 						});
 						return;
 					}
 				}
-			});
+			}
 
-			// Process SVG file
-			function processFile(file) {
+			processFile(file) {
 				const reader = new FileReader();
 				reader.onload = (e) => {
-					const svgContent = e.target.result;
-					processSvgString(svgContent);
+					this.processSvgString(e.target.result);
 				};
 				reader.readAsText(file);
 			}
 
-			// Process SVG string
-			function processSvgString(svgString) {
-				currentSvgContent = svgString;
-				originalSvgContent = svgString; // Store the original SVG
-				svgDocument = new DOMParser().parseFromString(svgString, 'image/svg+xml'); // Parse the SVG
-				convertSVG();
+			processSvgString(svgString) {
+				this.state.currentSvgContent = svgString;
+				this.state.originalSvgContent = svgString;
+				this.state.svgDocument = new DOMParser().parseFromString(svgString, 'image/svg+xml');
+				this.convertSVG();
 			}
 
-			// Convert SVG to image
-			function convertSVG() {
-				if (!currentSvgContent) return;
+			convertSVG() {
+				if (!this.state.currentSvgContent) return;
 
-				const format = formatSelect.value;
-				const scale = parseFloat(scaleInput.value);
-				const quality = parseFloat(qualityInput.value);
+				const format = this.elements.formatSelect.value;
+				const scale = parseFloat(this.elements.scaleInput.value);
+				const quality = parseFloat(this.elements.qualityInput.value);
 
-				// Create temporary container
+				// Create temporary container more efficiently
 				const tempDiv = document.createElement('div');
-				tempDiv.style.position = 'absolute';
-				tempDiv.style.left = '-9999px';
-				tempDiv.style.overflow = 'hidden';
-				tempDiv.innerHTML = currentSvgContent;
+				Object.assign(tempDiv.style, {
+					position: 'absolute',
+					left: '-9999px',
+					overflow: 'hidden'
+				});
+				tempDiv.innerHTML = this.state.currentSvgContent;
 
-				// Get SVG element
 				const svgElement = tempDiv.querySelector('svg');
 				if (!svgElement) {
-					showToast('Invalid SVG content');
+					this.showToast('Invalid SVG content');
 					return;
 				}
 
-				// Calculate dimensions
-				let width = parseFloat(svgElement.getAttribute('width'));
-				let height = parseFloat(svgElement.getAttribute('height'));
-				if (!width || !height || (width+"").includes('%') || (height+"").includes('%')) {
-					const viewBox = svgElement.getAttribute('viewBox');
-					if (viewBox) {
-						const viewBoxValues = viewBox.split(' '); if (viewBoxValues.length === 4) {
-							width = viewBoxValues[2];
-							height = viewBoxValues[3];
-						}
-					}
-				}
-				width = parseFloat(width) * scale || 300 * scale;
-				height = parseFloat(height) * scale || 150 * scale;
+				// More robust dimension calculation
+				const { width, height } = this.calculateSvgDimensions(svgElement, scale);
 
 				// Set scaled dimensions
 				svgElement.style.width = `${width}px`;
 				svgElement.style.height = `${height}px`;
 
 				document.body.appendChild(tempDiv);
-				// Wait for MathJax to render equations
-				if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
-					MathJax.typesetPromise([tempDiv]).then(() => {
-						html2canvas(tempDiv, {
-							scale: 1,
-							width: width,
-							height: height,
-							useCORS: true,
-							allowTaint: true,
-							logging: false
-						}).then(canvas => {
-							const mimeType = format === 'jpeg' ? 'image/jpeg' :
-								format === 'webp' ? 'image/webp' : 'image/png';
-							const dataUrl = canvas.toDataURL(mimeType, quality);
 
-							updatePreview(dataUrl);
-							updateImageSize(width, height);
+				// Performance: Consolidate rendering logic
+				this.renderAndProcessSVG(tempDiv, width, height, format, quality);
+			}
 
-							downloadBtn.classList.remove('disabled');
-							copyBtn.classList.remove('disabled');
-							editBtn.classList.remove('disabled');
-							resetBtnMain.classList.remove('disabled');
+			calculateSvgDimensions(svgElement, scale) {
+				let width = parseFloat(svgElement.getAttribute('width'));
+				let height = parseFloat(svgElement.getAttribute('height'));
 
-							convertedImage = dataUrl;
-							// document.body.removeChild(tempDiv);
-						}).catch(err => {
-							console.error('Rendering failed:', err);
-							showToast('Error converting SVG');
-							document.body.removeChild(tempDiv);
-						});
-					});
+				if (!width || !height || `${width}`.includes('%') || `${height}`.includes('%')) {
+					const viewBox = svgElement.getAttribute('viewBox');
+					if (viewBox) {
+						const [, , viewWidth, viewHeight] = viewBox.split(' ').map(parseFloat);
+						width = viewWidth;
+						height = viewHeight;
+					}
 				}
-				// Render with html2canvas
 
+				return {
+					width: parseFloat(width) * scale || 300 * scale,
+					height: parseFloat(height) * scale || 150 * scale
+				};
 			}
 
-			// Update preview
-			function updatePreview(dataUrl) {
-				// Clear previous content
-				previewArea.innerHTML = '';
-
-				// Create image element
-				const img = document.createElement('img');
-				img.src = dataUrl;
-				previewArea.appendChild(img);
+			renderAndProcessSVG(tempDiv, width, height, format, quality) {
+				// Use MathJax rendering if available
+				if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+					MathJax.typesetPromise([tempDiv]).then(() => this.convertToImage(tempDiv, width, height, format, quality));
+				} else {
+					this.convertToImage(tempDiv, width, height, format, quality);
+				}
 			}
 
-			function updateImageSize(width, height) {
-				imagePreviewHeader.textContent = `Preview (${width.toFixed(0)}px x ${height.toFixed(0)}px)`;
+			convertToImage(tempDiv, width, height, format, quality) {
+				html2canvas(tempDiv, {
+					scale: 1,
+					width,
+					height,
+					useCORS: true,
+					allowTaint: true,
+					logging: false
+				}).then(canvas => {
+					const mimeType = this.getMimeType(format);
+					const dataUrl = canvas.toDataURL(mimeType, quality);
+
+					this.updatePreview(dataUrl);
+					this.updateImageSize(width, height);
+
+					// Enable buttons
+					[this.elements.downloadBtn, this.elements.copyBtn,
+					this.elements.editBtn, this.elements.resetBtnMain]
+						.forEach(btn => btn.classList.remove('disabled'));
+
+					this.state.convertedImage = dataUrl;
+				}).catch(err => {
+					console.error('Rendering failed:', err);
+					this.showToast('Error converting SVG');
+				}).finally(() => {
+					document.body.removeChild(tempDiv);
+				});
 			}
 
-			// Download handler
-			downloadBtn.addEventListener('click', () => {
-				if (convertedImage && !downloadBtn.classList.contains('disabled')) {
-					const format = formatSelect.value;
+			getMimeType(format) {
+				switch (format) {
+					case 'jpeg': return 'image/jpeg';
+					case 'webp': return 'image/webp';
+					default: return 'image/png';
+				}
+			}
+
+			setupModalHandlers() {
+				// Edit Button Handler
+				this.elements.editBtn.addEventListener('click', () => {
+					if (this.state.currentSvgContent) {
+						this.elements.svgCodeEditor.value = this.state.currentSvgContent;
+						this.updateEditModalPreview(this.state.currentSvgContent);
+						this.elements.editModal.classList.add('show');
+					}
+				});
+
+				// Cancel Edit Button
+				this.elements.cancelEditBtn.addEventListener('click', () => {
+					this.closeEditModal();
+				});
+
+				// Save Edit Button
+				this.elements.saveEditBtn.addEventListener('click', () => {
+					this.saveEditedSvg();
+				});
+
+				// Reset Button in Edit Modal
+				this.elements.resetBtn.addEventListener('click', () => {
+					this.resetToOriginalSvg();
+				});
+
+				// SVG Code Editor Input Handler
+				this.elements.svgCodeEditor.addEventListener('input', () => {
+					const newSvgContent = this.elements.svgCodeEditor.value;
+					this.updateEditModalPreview(newSvgContent);
+				});
+
+				// SVG Code Editor Click Handler for Highlighting
+				this.elements.svgCodeEditor.addEventListener('click', this.handleSvgCodeEditorClick.bind(this));
+			}
+
+			setupUtilityHandlers() {
+				// Download Button Handler
+				this.elements.downloadBtn.addEventListener('click', () => {
+					this.downloadConvertedImage();
+				});
+
+				// Copy Button Handler
+				this.elements.copyBtn.addEventListener('click', () => {
+					this.copyConvertedImage();
+				});
+
+				// Reset Button Main Handler
+				this.elements.resetBtnMain.addEventListener('click', () => {
+					this.resetToOriginalSvg();
+				});
+
+				// Image Preview Click Handler
+				this.elements.previewArea.addEventListener('click', () => {
+					this.showFullSizeImage();
+				});
+
+				// Overlay Click Handler
+				this.elements.overlay.addEventListener('click', () => {
+					this.closeFullSizeImage();
+				});
+			}
+
+			// Modal and Utility Methods
+			closeEditModal() {
+				this.elements.editModal.classList.remove('show');
+				this.elements.svgCodeEditor.value = "";
+				this.elements.editModalPreview.innerHTML = "";
+				this.resetSvgHighlighting();
+			}
+
+			saveEditedSvg() {
+				this.resetSvgHighlighting();
+				this.state.currentSvgContent = this.elements.svgCodeEditor.value;
+				this.state.svgDocument = new DOMParser().parseFromString(this.state.currentSvgContent, 'image/svg+xml');
+				this.convertSVG();
+				this.closeEditModal();
+			}
+
+			resetToOriginalSvg() {
+				// For main reset button
+				if (this.state.originalSvgContent) {
+					this.state.currentSvgContent = this.state.originalSvgContent;
+					this.convertSVG();
+				}
+
+				// For edit modal reset
+				if (this.elements.svgCodeEditor) {
+					this.elements.svgCodeEditor.value = this.state.originalSvgContent;
+					this.updateEditModalPreview(this.state.originalSvgContent);
+				}
+			}
+
+			downloadConvertedImage() {
+				if (this.state.convertedImage && !this.elements.downloadBtn.classList.contains('disabled')) {
+					const format = this.elements.formatSelect.value;
 					const link = document.createElement('a');
-					link.href = convertedImage;
+					link.href = this.state.convertedImage;
 					link.download = `converted-image.${format}`;
 					document.body.appendChild(link);
 					link.click();
 					document.body.removeChild(link);
 				}
-			});
+			}
 
-			// Copy handler
-			copyBtn.addEventListener('click', async () => {
-				if (convertedImage && !copyBtn.classList.contains('disabled')) {
+			async copyConvertedImage() {
+				if (this.state.convertedImage && !this.elements.copyBtn.classList.contains('disabled')) {
 					try {
-						// Fetch the image data and convert to blob
-						const response = await fetch(convertedImage);
+						const response = await fetch(this.state.convertedImage);
 						const blob = await response.blob();
-
-						// Copy the blob to clipboard
 						const item = new ClipboardItem({ [blob.type]: blob });
 						await navigator.clipboard.write([item]);
-
-						// Show toast message
-						showToast('Image copied to clipboard!');
+						this.showToast('Image copied to clipboard!');
 					} catch (err) {
-						showToast('Failed to copy. Try downloading instead.');
+						this.showToast('Failed to copy. Try downloading instead.');
 						console.error('Failed to copy image: ', err);
 					}
 				}
-			});
-
-			// Toast message
-			function showToast(message) {
-				toast.textContent = message;
-				toast.classList.add('show');
-				setTimeout(() => {
-					toast.classList.remove('show');
-				}, 3000);
 			}
 
-			// Image Preview Click Handler
-			previewArea.addEventListener('click', () => {
-				if (convertedImage) {
-					fullSizeImage.src = convertedImage;
-					overlay.classList.add('show');
-				}
-			});
-
-			// Overlay Click Handler (to close the image)
-			overlay.addEventListener('click', () => {
-				overlay.classList.remove('show');
-				fullSizeImage.src = ""; // Clear the image source when closing
-			});
-
-
-			// --------------------------------------------------------
-			// Edit Modal Functionality
-			// --------------------------------------------------------
-
-			editBtn.addEventListener('click', () => {
-				if (currentSvgContent) {
-					svgCodeEditor.value = currentSvgContent; // Populate editor
-					updateEditModalPreview(currentSvgContent); // Initial render
-					editModal.classList.add('show');
-				}
-			});
-
-			cancelEditBtn.addEventListener('click', () => {
-				editModal.classList.remove('show');
-				svgCodeEditor.value = "";
-				editModalPreview.innerHTML = "";
-				resetSvgHighlighting();
-			});
-
-			saveEditBtn.addEventListener('click', () => {
-				resetSvgHighlighting();
-				currentSvgContent = svgCodeEditor.value; // Update current SVG
-				svgDocument = new DOMParser().parseFromString(currentSvgContent, 'image/svg+xml');
-				convertSVG(); // Re-convert the image
-				editModal.classList.remove('show');
-				svgCodeEditor.value = "";
-				editModalPreview.innerHTML = "";
-			});
-
-			resetBtn.addEventListener('click', () => {
-				svgCodeEditor.value = originalSvgContent;
-				updateEditModalPreview(originalSvgContent);
-			});
-			resetBtnMain.addEventListener('click', () => {
-				currentSvgContent = originalSvgContent;
-				convertSVG(); // Re-convert the image
-			});
-
-			svgCodeEditor.addEventListener('input', () => {
-				const newSvgContent = svgCodeEditor.value;
-				updateEditModalPreview(newSvgContent);
-				currentSvgContent = newSvgContent;
-
-			});
-
-			function updateEditModalPreview(svgContent) {
-				try {
-					editModalPreview.innerHTML = svgContent;
-					MathJax.typesetPromise([editModalPreview]);
-					svgDocument = new DOMParser().parseFromString(svgContent, 'image/svg+xml');
-
-				} catch (e) {
-					editModalPreview.innerHTML = '<p>Error rendering SVG</p>';
+			showFullSizeImage() {
+				if (this.state.convertedImage) {
+					this.elements.fullSizeImage.src = this.state.convertedImage;
+					this.elements.overlay.classList.add('show');
 				}
 			}
 
-			// Enhanced highlighting logic
-			svgCodeEditor.addEventListener('click', (event) => {
-				if (!svgDocument) return;
+			closeFullSizeImage() {
+				this.elements.overlay.classList.remove('show');
+				this.elements.fullSizeImage.src = ""; // Clear the image source
+			}
 
-				const textarea = svgCodeEditor;
+			// SVG Code Editor Highlighting Methods
+			handleSvgCodeEditorClick(event) {
+				if (!this.state.svgDocument) return;
+
+				const textarea = this.elements.svgCodeEditor;
 				const selectionStart = textarea.selectionStart;
 
 				// Get the entire textarea content as an array of lines
@@ -951,25 +1007,25 @@
 				let tagLine = lines[cursorLineIndex].trim(); // The exact line containing the tag
 
 				if (!tagLine.startsWith("<") || !tagLine.endsWith(">")) {
-					resetSvgHighlighting();
+					this.resetSvgHighlighting();
 					return;
 				}
 
 				// Find the exact matching element in the SVG document
-				let matchedElement = findSvgElementByLine(tagLine);
+				let matchedElement = this.findSvgElementByLine(tagLine);
 
-				resetSvgHighlighting();
+				this.resetSvgHighlighting();
 
 				if (matchedElement) {
 					matchedElement.classList.add('highlighted-svg-element');
 				}
-			});
+			}
 
-			function findSvgElementByLine(tagLine) {
-				if (!svgDocument) return null;
+			findSvgElementByLine(tagLine) {
+				if (!this.state.svgDocument) return null;
 
 				// Get all elements inside the SVG
-				let elements = Array.from(editModalPreview.querySelectorAll("*")); // Select all elements
+				let elements = Array.from(this.elements.editModalPreview.querySelectorAll("*"));
 
 				for (let el of elements) {
 					let serializedEl = el.outerHTML.split("\n")[0].trim(); // Get only the first line of outerHTML
@@ -981,17 +1037,56 @@
 				return null;
 			}
 
-			// Function to remove previous highlights
-			function resetSvgHighlighting() {
+			resetSvgHighlighting() {
 				document.querySelectorAll('.highlighted-svg-element').forEach(el => {
 					el.classList.remove('highlighted-svg-element');
 					if (el.classList.length == 0) {
-						el.removeAttribute("class")
+						el.removeAttribute("class");
 					}
 				});
 			}
 
+			// Additional Helper Methods
+			updateEditModalPreview(svgContent) {
+				try {
+					this.elements.editModalPreview.innerHTML = svgContent;
 
+					// Render MathJax if available
+					if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+						MathJax.typesetPromise([this.elements.editModalPreview]);
+					}
+
+					this.state.svgDocument = new DOMParser().parseFromString(svgContent, 'image/svg+xml');
+				} catch (e) {
+					this.elements.editModalPreview.innerHTML = '<p>Error rendering SVG</p>';
+				}
+			}
+
+			// Simplified methods for brevity
+			updatePreview(dataUrl) {
+				this.elements.previewArea.innerHTML = `<img src="${dataUrl}" alt="Converted Image">`;
+			}
+
+			updateImageSize(width, height) {
+				this.elements.imagePreviewHeader.textContent = `Preview (${width.toFixed(0)}px x ${height.toFixed(0)}px)`;
+			}
+
+			showToast(message) {
+				const { toast } = this.elements;
+				toast.textContent = message;
+				toast.classList.add('show');
+				setTimeout(() => toast.classList.remove('show'), 3000);
+			}
+
+			// Initialize the converter
+			static init() {
+				return new SVGConverter();
+			}
+		}
+
+		// Initialize on DOM content loaded
+		document.addEventListener('DOMContentLoaded', () => {
+			SVGConverter.init();
 		});
 	</script>
 </body>
