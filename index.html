@@ -269,6 +269,9 @@
 
 		.option-group input[type="range"] {
 			box-shadow: none;
+			padding: 10px 0;
+			border-left: none;
+			border-right: none;
 		}
 
 		.range-value {
@@ -331,7 +334,7 @@
 			</div>
 
 			<div class="result-container">
-				<h2>Preview</h2>
+				<h2 id="imagePreviewHeader">Preview</h2>
 				<div class="preview-area" id="previewArea">
 					<div class="placeholder">Your converted image will appear here</div>
 				</div>
@@ -364,18 +367,18 @@
 			</div>
 
 			<div class="actions">
-				<button class="action-btn download disabled" id="downloadBtn">
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-						<path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z" />
-					</svg>
-					Download
-				</button>
 				<button class="action-btn copy disabled" id="copyBtn">
 					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 						<path
 							d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
 					</svg>
 					Copy Image
+				</button>
+				<button class="action-btn download disabled" id="downloadBtn">
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+						<path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z" />
+					</svg>
+					Download
 				</button>
 			</div>
 		</div>
@@ -389,6 +392,7 @@
 			const dropArea = document.getElementById('dropArea');
 			const fileInput = document.getElementById('fileInput');
 			const previewArea = document.getElementById('previewArea');
+			const imagePreviewHeader = document.getElementById('imagePreviewHeader');
 			const downloadBtn = document.getElementById('downloadBtn');
 			const copyBtn = document.getElementById('copyBtn');
 			const formatSelect = document.getElementById('formatSelect');
@@ -403,6 +407,7 @@
 			let convertedImage = null;
 
 			// Update range value displays
+			let scaleTimeout;
 			scaleInput.addEventListener('input', () => {
 				scaleValue.textContent = `${scaleInput.value}x`;
 				clearTimeout(scaleTimeout);
@@ -411,6 +416,7 @@
 				}, 300); // Convert after 300ms of inactivity
 			});
 
+			let qualityTimeout
 			qualityInput.addEventListener('input', () => {
 				qualityValue.textContent = `${Math.round(qualityInput.value * 100)}%`;
 				clearTimeout(qualityTimeout);
@@ -580,6 +586,7 @@
 
 					const dataUrl = canvas.toDataURL(mimeType, quality);
 					updatePreview(dataUrl);
+					updateImageSize(width, height);
 
 					// Enable download and copy buttons
 					downloadBtn.classList.remove('disabled');
@@ -600,6 +607,10 @@
 				const img = document.createElement('img');
 				img.src = dataUrl;
 				previewArea.appendChild(img);
+			}
+
+			function updateImageSize(width, height) {
+				imagePreviewHeader.textContent = `Preview (${width.toFixed(0)}px x ${height.toFixed(0)}px)`;
 			}
 
 			// Download handler
