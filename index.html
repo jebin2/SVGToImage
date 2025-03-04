@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVG to Image Converter</title>
+  <style>
+    :root {
+      --primary: #ff6b6b;
+      --secondary: #4ecdc4;
+      --accent: #ffe66d;
+      --dark: #292f36;
+      --light: #f7fff7;
+      --shadow-offset: 4px;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+    
+    body {
+      background-color: #f0f0f0;
+      color: var(--dark);
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    
+    .header h1 {
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--dark);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      text-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--primary);
+    }
+    
+    .header p {
+      font-size: 1.2rem;
+      color: var(--dark);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .converter {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    
+    .drop-area {
+      background-color: var(--light);
+      border: 4px solid var(--dark);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--dark);
+      transition: all 0.2s ease;
+      height: 300px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .drop-area:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: calc(var(--shadow-offset) + 2px) calc(var(--shadow-offset) + 2px) 0 var(--dark);
+    }
+    
+    .drop-area.active {
+      background-color: rgba(78, 205, 196, 0.2);
+    }
+    
+    .drop-area svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+      fill: var(--dark);
+    }
+    
+    .drop-area h2 {
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+    }
+    
+    .drop-area p {
+      margin-bottom: 16px;
+      color: #666;
+    }
+    
+    .upload-btn {
+      background-color: var(--primary);
+      color: white;
+      font-weight: bold;
+      padding: 12px 24px;
+      border: 3px solid var(--dark);
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 3px 3px 0 var(--dark);
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      font-size: 1rem;
+    }
+    
+    .upload-btn:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0 var(--dark);
+    }
+    
+    .upload-btn:active {
+      transform: translate(1px, 1px);
+      box-shadow: 2px 2px 0 var(--dark);
+    }
+    
+    .result-container {
+      background-color: var(--light);
+      border: 4px solid var(--dark);
+      border-radius: 12px;
+      padding: 24px;
+      position: relative;
+      box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--dark);
+      height: 300px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .result-container h2 {
+      font-size: 1.5rem;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    
+    .preview-area {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      background-color: #fff;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+    }
+    
+    .preview-area img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    
+    .preview-area .placeholder {
+      color: #999;
+      font-size: 1.2rem;
+    }
+    
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 24px;
+    }
+    
+    .action-btn {
+      background-color: var(--secondary);
+      color: var(--dark);
+      font-weight: bold;
+      padding: 12px;
+      border: 3px solid var(--dark);
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 3px 3px 0 var(--dark);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-transform: uppercase;
+      font-size: 0.9rem;
+    }
+    
+    .action-btn svg {
+      margin-right: 8px;
+      width: 18px;
+      height: 18px;
+    }
+    
+    .action-btn:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0 var(--dark);
+    }
+    
+    .action-btn:active {
+      transform: translate(1px, 1px);
+      box-shadow: 2px 2px 0 var(--dark);
+    }
+    
+    .action-btn.download {
+      background-color: var(--accent);
+    }
+    
+    .action-btn.disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+    
+    .action-btn.disabled:hover {
+      transform: none;
+      box-shadow: 3px 3px 0 var(--dark);
+    }
+    
+    .options {
+      margin-top: 24px;
+      background-color: var(--light);
+      border: 4px solid var(--dark);
+      border-radius: 12px;
+      padding: 24px;
+      position: relative;
+      box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--dark);
+      grid-column: span 2;
+    }
+    
+    .options h2 {
+      font-size: 1.5rem;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    
+    .option-group {
+      margin-bottom: 16px;
+    }
+    
+    .option-group label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    
+    .option-group select,
+    .option-group input {
+      width: 100%;
+      padding: 10px;
+      border: 3px solid var(--dark);
+      border-radius: 6px;
+      font-size: 1rem;
+      background-color: white;
+      box-shadow: 2px 2px 0 var(--dark);
+    }
+    
+    .option-group input[type="range"] {
+      box-shadow: none;
+    }
+    
+    .range-value {
+      text-align: center;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+    
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--dark);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+    
+    .toast.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    @media (max-width: 768px) {
+      .converter {
+        grid-template-columns: 1fr;
+      }
+      
+      .options {
+        grid-column: span 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>SVG Converter</h1>
+      <p>Instantly convert SVG to high-quality PNG, JPG, or WebP - right in your browser!</p>
+    </div>
+    
+    <div class="converter">
+      <div class="drop-area" id="dropArea">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M18 15v3H6v-3H4v3c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-3h-2zm-6 .86 5-5-1.42-1.42L12 12.02l-3.58-3.58L7 9.86l5 5z"/>
+        </svg>
+        <h2>Drop your SVG file here</h2>
+        <p>or paste from clipboard, or</p>
+        <label class="upload-btn">
+          Browse Files
+          <input type="file" id="fileInput" accept=".svg" style="display:none">
+        </label>
+      </div>
+      
+      <div class="result-container">
+        <h2>Preview</h2>
+        <div class="preview-area" id="previewArea">
+          <div class="placeholder">Your converted image will appear here</div>
+        </div>
+      </div>
+      
+      <div class="options">
+        <h2>Conversion Options</h2>
+        <div class="options-grid">
+          <div class="option-group">
+            <label for="formatSelect">Output Format</label>
+            <select id="formatSelect">
+              <option value="png">PNG</option>
+              <option value="jpeg">JPEG</option>
+              <option value="webp">WebP</option>
+            </select>
+          </div>
+          
+          <div class="option-group">
+            <label for="scaleInput">Scale Factor</label>
+            <input type="range" id="scaleInput" min="1" max="5" step="0.5" value="2">
+            <div class="range-value" id="scaleValue">2x</div>
+          </div>
+          
+          <div class="option-group">
+            <label for="qualityInput">Quality (JPEG/WebP)</label>
+            <input type="range" id="qualityInput" min="0" max="1" step="0.1" value="0.9">
+            <div class="range-value" id="qualityValue">90%</div>
+          </div>
+          
+          <div class="option-group">
+            <label for="backgroundInput">Background Color</label>
+            <input type="color" id="backgroundInput" value="#ffffff">
+          </div>
+        </div>
+      </div>
+      
+      <div class="actions">
+        <button class="action-btn download disabled" id="downloadBtn">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/>
+          </svg>
+          Download
+        </button>
+        <button class="action-btn copy disabled" id="copyBtn">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+          </svg>
+          Copy Image
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="toast" id="toast">Copied to clipboard!</div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Elements
+      const dropArea = document.getElementById('dropArea');
+      const fileInput = document.getElementById('fileInput');
+      const previewArea = document.getElementById('previewArea');
+      const downloadBtn = document.getElementById('downloadBtn');
+      const copyBtn = document.getElementById('copyBtn');
+      const formatSelect = document.getElementById('formatSelect');
+      const scaleInput = document.getElementById('scaleInput');
+      const scaleValue = document.getElementById('scaleValue');
+      const qualityInput = document.getElementById('qualityInput');
+      const qualityValue = document.getElementById('qualityValue');
+      const backgroundInput = document.getElementById('backgroundInput');
+      const toast = document.getElementById('toast');
+      
+      // Variables
+      let currentSvgContent = null;
+      let convertedImage = null;
+      
+      // Update range value displays
+      scaleInput.addEventListener('input', () => {
+        scaleValue.textContent = `${scaleInput.value}x`;
+        if (currentSvgContent) convertSVG();
+      });
+      
+      qualityInput.addEventListener('input', () => {
+        qualityValue.textContent = `${Math.round(qualityInput.value * 100)}%`;
+        if (currentSvgContent) convertSVG();
+      });
+      
+      // Format change handler
+      formatSelect.addEventListener('change', () => {
+        if (currentSvgContent) convertSVG();
+      });
+      
+      // Background color change handler
+      backgroundInput.addEventListener('change', () => {
+        if (currentSvgContent) convertSVG();
+      });
+      
+      // Drag and drop handlers
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+      });
+      
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, () => {
+          dropArea.classList.add('active');
+        });
+      });
+      
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, () => {
+          dropArea.classList.remove('active');
+        });
+      });
+      
+      dropArea.addEventListener('drop', handleDrop);
+      
+      function handleDrop(e) {
+        const dt = e.dataTransfer;
+        if (dt.items) {
+          // Use DataTransferItemList interface to access files
+          for (let i = 0; i < dt.items.length; i++) {
+            if (dt.items[i].kind === "file") {
+              const file = dt.items[i].getAsFile();
+              if (file.type === "image/svg+xml") {
+                processFile(file);
+                break;
+              }
+            } else if (dt.items[i].kind === "string" && dt.items[i].type === "text/plain") {
+              dt.items[i].getAsString((text) => {
+                if (text.trim().startsWith('<svg') || text.trim().startsWith('<?xml')) {
+                  processSvgString(text);
+                }
+              });
+              break;
+            }
+          }
+        } else {
+          // Use DataTransfer interface to access files
+          for (let i = 0; i < dt.files.length; i++) {
+            if (dt.files[i].type === "image/svg+xml") {
+              processFile(dt.files[i]);
+              break;
+            }
+          }
+        }
+      }
+      
+      // File input handler
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+          processFile(fileInput.files[0]);
+        }
+      });
+      
+      // Paste handler
+      document.addEventListener('paste', (e) => {
+        e.preventDefault();
+        
+        const clipboardData = e.clipboardData || window.clipboardData;
+        const items = clipboardData.items;
+        
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type === "image/svg+xml") {
+            const blob = items[i].getAsFile();
+            processFile(blob);
+            return;
+          } else if (items[i].type === "text/plain") {
+            items[i].getAsString((text) => {
+              if (text.trim().startsWith('<svg') || text.trim().startsWith('<?xml')) {
+                processSvgString(text);
+              }
+            });
+            return;
+          }
+        }
+      });
+      
+      // Process SVG file
+      function processFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const svgContent = e.target.result;
+          processSvgString(svgContent);
+        };
+        reader.readAsText(file);
+      }
+      
+      // Process SVG string
+      function processSvgString(svgString) {
+        currentSvgContent = svgString;
+        convertSVG();
+      }
+      
+      // Convert SVG to image
+      function convertSVG() {
+        if (!currentSvgContent) return;
+        
+        const format = formatSelect.value;
+        const scale = parseFloat(scaleInput.value);
+        const quality = parseFloat(qualityInput.value);
+        const backgroundColor = backgroundInput.value;
+        
+        // Create a temporary SVG element to get dimensions
+        const parser = new DOMParser();
+        const svgDoc = parser.parseFromString(currentSvgContent, 'image/svg+xml');
+        const svgElement = svgDoc.documentElement;
+        
+        // Get SVG dimensions
+        let width = svgElement.getAttribute('width');
+        let height = svgElement.getAttribute('height');
+        
+        // If dimensions are not set or are percentages, try to get from viewBox
+        if (!width || !height || width.includes('%') || height.includes('%')) {
+          const viewBox = svgElement.getAttribute('viewBox');
+          if (viewBox) {
+            const viewBoxValues = viewBox.split(' ');
+            if (viewBoxValues.length === 4) {
+              width = viewBoxValues[2];
+              height = viewBoxValues[3];
+            }
+          }
+        }
+        
+        // Convert to numbers and apply scale
+        width = parseFloat(width) * scale || 300 * scale;
+        height = parseFloat(height) * scale || 150 * scale;
+        
+        // Create a canvas element
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        
+        // Set background color
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Create a blob URL for the SVG
+        const blob = new Blob([currentSvgContent], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        
+        // Create an image element and draw it on the canvas when loaded
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, width, height);
+          URL.revokeObjectURL(url);
+          
+          // Convert canvas to image with specified format
+          const mimeType = format === 'jpeg' ? 'image/jpeg' : 
+                          format === 'webp' ? 'image/webp' : 'image/png';
+          
+          const dataUrl = canvas.toDataURL(mimeType, quality);
+          updatePreview(dataUrl);
+          
+          // Enable download and copy buttons
+          downloadBtn.classList.remove('disabled');
+          copyBtn.classList.remove('disabled');
+          
+          // Store converted image data
+          convertedImage = dataUrl;
+        };
+        img.src = url;
+      }
+      
+      // Update preview
+      function updatePreview(dataUrl) {
+        // Clear previous content
+        previewArea.innerHTML = '';
+        
+        // Create image element
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        previewArea.appendChild(img);
+      }
+      
+      // Download handler
+      downloadBtn.addEventListener('click', () => {
+        if (convertedImage && !downloadBtn.classList.contains('disabled')) {
+          const format = formatSelect.value;
+          const link = document.createElement('a');
+          link.href = convertedImage;
+          link.download = `converted-image.${format}`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      });
+      
+      // Copy handler
+      copyBtn.addEventListener('click', async () => {
+        if (convertedImage && !copyBtn.classList.contains('disabled')) {
+          try {
+            // Fetch the image data and convert to blob
+            const response = await fetch(convertedImage);
+            const blob = await response.blob();
+            
+            // Copy the blob to clipboard
+            const item = new ClipboardItem({ [blob.type]: blob });
+            await navigator.clipboard.write([item]);
+            
+            // Show toast message
+            showToast('Image copied to clipboard!');
+          } catch (err) {
+            showToast('Failed to copy. Try downloading instead.');
+            console.error('Failed to copy image: ', err);
+          }
+        }
+      });
+      
+      // Toast message
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => {
+          toast.classList.remove('show');
+        }, 3000);
+      }
+    });
+  </script>
+</body>
+</html>
