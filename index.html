@@ -360,11 +360,6 @@
 						<input type="range" id="qualityInput" min="0" max="1" step="0.1" value="0.9">
 						<div class="range-value" id="qualityValue">90%</div>
 					</div>
-
-					<div class="option-group">
-						<label for="backgroundInput">Background Color</label>
-						<input type="color" id="backgroundInput" value="#ffffff">
-					</div>
 				</div>
 			</div>
 
@@ -401,7 +396,6 @@
 			const scaleValue = document.getElementById('scaleValue');
 			const qualityInput = document.getElementById('qualityInput');
 			const qualityValue = document.getElementById('qualityValue');
-			const backgroundInput = document.getElementById('backgroundInput');
 			const toast = document.getElementById('toast');
 
 			// Variables
@@ -421,11 +415,6 @@
 
 			// Format change handler
 			formatSelect.addEventListener('change', () => {
-				if (currentSvgContent) convertSVG();
-			});
-
-			// Background color change handler
-			backgroundInput.addEventListener('change', () => {
 				if (currentSvgContent) convertSVG();
 			});
 
@@ -537,7 +526,6 @@
 				const format = formatSelect.value;
 				const scale = parseFloat(scaleInput.value);
 				const quality = parseFloat(qualityInput.value);
-				const backgroundColor = backgroundInput.value;
 
 				// Create a temporary SVG element to get dimensions
 				const parser = new DOMParser();
@@ -569,10 +557,6 @@
 				canvas.width = width;
 				canvas.height = height;
 				const ctx = canvas.getContext('2d');
-
-				// Set background color
-				ctx.fillStyle = backgroundColor;
-				ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 				// Create a blob URL for the SVG
 				const blob = new Blob([currentSvgContent], { type: 'image/svg+xml' });
