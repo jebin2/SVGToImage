@@ -61,7 +61,7 @@
 		.converter {
 			display: grid;
 			grid-template-columns: 1fr 1fr;
-			gap: 24px;
+			gap: 20px;
 		}
 
 		.drop-area {
@@ -174,10 +174,10 @@
 		}
 
 		.actions {
-			display: contents;
-			/* added 3rd column */
+			display: grid;
+			grid-template-columns: 1fr 1fr 1fr 1fr;
 			gap: 16px;
-			/*       margin-top: 24px; */
+			grid-column: span 2;
 		}
 
 		.action-btn {
